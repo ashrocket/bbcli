@@ -9,38 +9,97 @@ The missing Bitbucket Cloud toolkit — for you and your AI assistant.
 
 Both share one auth setup, one config, and identical behavior. What `gh` is to GitHub, bbcli is to Bitbucket — built for the age of AI-assisted development.
 
-> **First Bitbucket MCP server.** No Bitbucket MCP server exists today. bbmcp fills that gap.
+> **First Bitbucket MCP server.** No Bitbucket MCP server exists. bbmcp fills that gap.
+
+## Install
+
+```bash
+# Requires Go 1.21+
+go install github.com/ashrocket/bbcli/cmd/bbcli@latest
+go install github.com/ashrocket/bbcli/cmd/bbmcp@latest
+```
+
+Make sure `~/go/bin` is in your PATH:
+```bash
+echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
 
 ## Quick Start
 
 ```bash
-# Install (gets you both bbcli and bbmcp)
-brew install ashrocket/tap/bbcli
-
-# Or build from source
-go install github.com/ashrocket/bbcli/cmd/bbcli@latest
-go install github.com/ashrocket/bbcli/cmd/bbmcp@latest
-
-# Authenticate (one time, works for both)
+# Authenticate (one time, works for both CLI and MCP)
 bbcli auth login
 
-# Use the CLI
-bbcli pr create --title "Fix auth bug" --dest dev
-bbcli pr list --json
-bbcli pipeline watch 42
+# Set your default workspace
+bbcli config set defaults.workspace myworkspace
 
-# Or give your AI assistant native Bitbucket tools
-claude mcp add bitbucket -- bbmcp
+# List PRs
+bbcli pr list -r my-repo
+
+# Create a PR
+bbcli pr create --title "Fix auth bug" --dest dev -r my-repo
+
+# Check pipelines
+bbcli pipeline list -r my-repo
+bbcli pipeline status 42 -r my-repo
+
+# Watch a pipeline until it finishes
+bbcli pipeline watch -r my-repo
+
+# Hit any Bitbucket API endpoint directly
+bbcli api /user
 ```
 
-## Why bbcli?
+## Commands
 
-| Problem | bbcli Solution |
-|---------|---------------|
-| No Bitbucket CLI for AI agents | Every command has `--json` output and semantic exit codes |
-| No Bitbucket MCP server | `bbmcp` exposes 38 curated tools for AI assistants |
-| App passwords dying June 2026 | Built for API tokens from day one |
-| Existing CLIs are unmaintained | Active development, open source (MIT) |
+```
+bbcli pr list              List pull requests
+bbcli pr create            Create a pull request
+bbcli pr view <ID>         View PR details
+bbcli pr approve <ID>      Approve a PR
+bbcli pr decline <ID>      Decline a PR
+bbcli pr merge <ID>        Merge a PR
+
+bbcli pipeline list        List recent pipelines
+bbcli pipeline status <N>  Show pipeline steps
+bbcli pipeline watch [N]   Watch until completion
+
+bbcli branch delete <name> Delete a remote branch
+
+bbcli auth login           Store credentials
+bbcli auth status          Show auth chain
+
+bbcli config set <k> <v>   Set config value
+bbcli config get <k>       Get config value
+bbcli config list          Show all config
+
+bbcli api <path>           Authenticated API request
+```
+
+Every command supports `--json`, `--output minimal`, and `--output table` (default).
+
+## Authentication
+
+bbcli resolves auth from (in priority order):
+
+1. `BBCLI_TOKEN` environment variable
+2. `--token` flag
+3. `~/.config/bbcli/credentials` (stored by `bbcli auth login`)
+4. Legacy `~/.bb-cli-token-*` files
+
+```bash
+# Option A: Environment variable (recommended for CI/agents)
+export BBCLI_TOKEN="your-bitbucket-token"
+
+# Option B: Persistent login
+bbcli auth login --token your-bitbucket-token
+
+# Option C: Interactive login (prompts for token)
+bbcli auth login
+```
+
+Supports both Bearer tokens (workspace/repo access tokens) and Basic auth (email:app_password format).
 
 ## For AI Agents (CLI)
 
@@ -53,8 +112,7 @@ export BBCLI_OUTPUT="json"
 PR_ID=$(bbcli pr create --title "Fix auth" --dest dev --output minimal)
 
 # Check CI
-PIPELINE=$(bbcli pipeline list --limit 1 --output minimal)
-bbcli pipeline watch "$PIPELINE" --timeout 600
+bbcli pipeline watch --timeout 600
 
 # Merge
 bbcli pr merge "$PR_ID"
@@ -74,8 +132,14 @@ Every error includes a machine-readable code and `retryable` flag:
 
 ## For AI Agents (MCP)
 
-Add to your `.mcp.json` (Claude Code, Cursor, etc.):
+Give your AI coding assistant native Bitbucket tools:
 
+```bash
+# Claude Code — one command setup
+claude mcp add bitbucket -- bbmcp
+```
+
+Or add to `.mcp.json`:
 ```json
 {
   "mcpServers": {
@@ -87,7 +151,7 @@ Add to your `.mcp.json` (Claude Code, Cursor, etc.):
 }
 ```
 
-38 tools available instantly — `bitbucket_pr_create`, `bitbucket_pipeline_status`, `bitbucket_source_view`, and more. No output parsing. No exit code checking. Native tool calls.
+22 tools available: `bitbucket_pr_create`, `bitbucket_pr_list`, `bitbucket_pipeline_status`, `bitbucket_source_view`, `bitbucket_api`, and more.
 
 ## Exit Codes
 
@@ -102,11 +166,16 @@ Add to your `.mcp.json` (Claude Code, Cursor, etc.):
 | 6 | Rate limited | Back off and retry |
 | 7 | Network/API error | Retry or escalate |
 
-## Status
+## Auto-Detection
 
-**Under active development.** Core PR and pipeline commands are being implemented first. The `bbcli api` escape hatch provides authenticated access to any Bitbucket endpoint in the meantime.
+bbcli auto-detects your workspace and repo from the git remote in your current directory. No need to pass `-w` and `-r` flags when working inside a Bitbucket repo.
 
-See [DESIGN.md](https://github.com/ashrocket/bbcli/issues/17) for the full specification.
+```bash
+cd ~/code/my-bitbucket-repo
+bbcli pr list    # just works — workspace and repo detected from git remote
+```
+
+Override with flags: `bbcli pr list -w other-workspace -r other-repo`
 
 ## License
 
