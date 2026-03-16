@@ -34,11 +34,12 @@ func (s *Server) registerPRTools() {
 		),
 	)
 
-	s.mcp.AddTool(tool, s.handlePRList)
+	s.mcp.AddTool(tool, s.HandlePRList)
 }
 
-// handlePRList implements the bitbucket_pr_list tool.
-func (s *Server) handlePRList(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// HandlePRList implements the bitbucket_pr_list tool.
+// Exported so tests can call it directly.
+func (s *Server) HandlePRList(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	workspace := req.GetString("workspace", s.defaultWorkspace)
 	repo := req.GetString("repo", s.defaultRepo)
 	state := req.GetString("state", "OPEN")
