@@ -265,5 +265,15 @@ func (c *Client) BaseURL() string {
 	return c.baseURL
 }
 
+// Workspace returns the resolved workspace.
+func (c *Client) Workspace() string {
+	return c.workspace
+}
+
+// Repo returns the resolved repository slug.
+func (c *Client) Repo() string {
+	return c.repo
+}
+
 // DebugWriter is where debug output goes (stderr in production).
 var DebugWriter io.Writer = io.Discard
