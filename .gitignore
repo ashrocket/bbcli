@@ -1,0 +1,13 @@
+# Compiled binaries
+bbcli
+bbmcp
+bin/
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
