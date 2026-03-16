@@ -51,4 +51,7 @@ func (s *Server) MCPServer() *server.MCPServer {
 // registerTools wires up every tool the MCP server exposes.
 func (s *Server) registerTools() {
 	s.registerPRTools()
+	s.registerPipelineTools()
+	s.registerRepoTools()
+	s.registerMiscTools()
 }

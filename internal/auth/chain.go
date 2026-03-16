@@ -1,9 +1,10 @@
-// Package auth resolves authentication tokens from a 4-level priority chain:
+// Package auth resolves authentication tokens from a 5-level priority chain:
 //
 //  1. BBCLI_TOKEN environment variable (highest priority)
 //  2. --token CLI flag
-//  3. OS keychain (stub — not yet implemented)
-//  4. Legacy files (~/.bb-cli-token-{repo}, ~/.bb-cli-personal-token, ~/.bb-cli-token)
+//  3. Credentials file (~/.config/bbcli/credentials)
+//  4. OS keychain (stub — not yet implemented)
+//  5. Legacy files (~/.bb-cli-token-{repo}, ~/.bb-cli-personal-token, ~/.bb-cli-token)
 //
 // Present-but-invalid = hard error (no fallthrough).
 // Absent = continue to next level.
@@ -23,10 +24,11 @@ import (
 type Level int
 
 const (
-	LevelEnvVar     Level = 1
-	LevelFlag       Level = 2
-	LevelKeychain   Level = 3
-	LevelLegacyFile Level = 4
+	LevelEnvVar      Level = 1
+	LevelFlag        Level = 2
+	LevelCredFile    Level = 3
+	LevelKeychain    Level = 4
+	LevelLegacyFile  Level = 5
 )
 
 // String returns a human-readable label for display in `auth status`.
@@ -36,6 +38,8 @@ func (l Level) String() string {
 		return "env"
 	case LevelFlag:
 		return "flag"
+	case LevelCredFile:
+		return "credentials-file"
 	case LevelKeychain:
 		return "keychain"
 	case LevelLegacyFile:
@@ -100,7 +104,7 @@ func TryLevel(level Level, label string, fn func() (string, error)) TraceEntry {
 	return TraceEntry{Level: level, Label: label, Found: true, Token: token}
 }
 
-// Resolve walks the 4-level auth chain and returns the first token found.
+// Resolve walks the 5-level auth chain and returns the first token found.
 // tokenFlag is the value of --token (empty string if not provided).
 // repoName is the current repository slug (used for legacy file lookup).
 func Resolve(tokenFlag, repoName string) (*Result, error) {
@@ -113,6 +117,7 @@ func Resolve(tokenFlag, repoName string) (*Result, error) {
 	}{
 		{LevelEnvVar, "env", readEnvVar},
 		{LevelFlag, "flag", func() (string, error) { return tokenFlag, nil }},
+		{LevelCredFile, "credentials-file", readCredentialsFile},
 		{LevelKeychain, "keychain", readKeychain},
 		{LevelLegacyFile, "legacy-file", func() (string, error) { return readLegacyFiles(repoName) }},
 	}
@@ -159,6 +164,29 @@ func classifyToken(token string) AuthKind {
 // readEnvVar reads BBCLI_TOKEN. Empty string = absent.
 func readEnvVar() (string, error) {
 	return os.Getenv("BBCLI_TOKEN"), nil
+}
+
+// readCredentialsFile reads the token from ~/.config/bbcli/credentials.
+// Respects BBCLI_CONFIG_DIR env var for the config directory.
+func readCredentialsFile() (string, error) {
+	dir := os.Getenv("BBCLI_CONFIG_DIR")
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", nil // can't determine home — absent
+		}
+		dir = filepath.Join(home, ".config", "bbcli")
+	}
+	credPath := filepath.Join(dir, "credentials")
+	data, err := os.ReadFile(credPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil // absent
+		}
+		return "", err
+	}
+	token := strings.TrimSpace(string(data))
+	return token, nil
 }
 
 // readKeychain is a stub that always returns an error.

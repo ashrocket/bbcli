@@ -65,8 +65,13 @@ func runPipelineStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	// Fetch steps for this pipeline.
-	uuid := strings.Trim(found.UUID, "{}")
-	stepsPath := fmt.Sprintf("/repositories/{workspace}/{repo_slug}/pipelines/%s/steps/", uuid)
+	// Bitbucket API requires UUID with braces, URL-encoded as %7B...%7D
+	uuid := found.UUID
+	if !strings.HasPrefix(uuid, "{") {
+		uuid = "{" + uuid + "}"
+	}
+	encodedUUID := strings.ReplaceAll(strings.ReplaceAll(uuid, "{", "%7B"), "}", "%7D")
+	stepsPath := fmt.Sprintf("/repositories/{workspace}/{repo_slug}/pipelines/%s/steps/", encodedUUID)
 	stepsRaw, err := client.ListAll(stepsPath, 100)
 	if err != nil {
 		return err

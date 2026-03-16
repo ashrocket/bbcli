@@ -139,6 +139,8 @@ CLI flags, OS keychain, or legacy token files.`,
 	rootCmd.AddCommand(newPipelineCmd())
 	rootCmd.AddCommand(newAuthCmd())
 	rootCmd.AddCommand(newAPICmd())
+	rootCmd.AddCommand(newBranchCmd())
+	rootCmd.AddCommand(newConfigCmd())
 
 	return rootCmd
 }

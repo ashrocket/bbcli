@@ -13,6 +13,7 @@ func newPipelineCmd() *cobra.Command {
 
 	pipelineCmd.AddCommand(newPipelineListCmd())
 	pipelineCmd.AddCommand(newPipelineStatusCmd())
+	pipelineCmd.AddCommand(newPipelineWatchCmd())
 
 	return pipelineCmd
 }
